@@ -1,0 +1,29 @@
+version: '3.9'
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: nautix
+      POSTGRES_PASSWORD: nautix
+      POSTGRES_DB: nautix
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://nautix:nautix@db:5432/nautix
+      - JWT_PRIVATE_KEY_PATH=/app/keys/qr_es256_private.pem
+      - JWT_PUBLIC_KEY_PATH=/app/keys/qr_es256_public.pem
+      - CORS_ORIGINS=*
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+
+volumes:
+  pg_data: 

@@ -1,0 +1,7 @@
+origin_port,dest_port,departure_time,arrival_time,capacity,operator
+Split,Hvar,2024-08-15 08:00:00,2024-08-15 09:30:00,200,Jadrolinija
+Split,Hvar,2024-08-15 16:00:00,2024-08-15 17:30:00,200,Jadrolinija
+Split,Vis,2024-08-15 10:00:00,2024-08-15 11:30:00,150,Jadrolinija
+Hvar,Korčula,2024-08-15 14:00:00,2024-08-15 15:00:00,100,Kapetan Luka
+Split,Dubrovnik,2024-08-15 07:00:00,2024-08-15 12:00:00,300,Jadrolinija
+Zadar,Ancona,2024-08-15 20:00:00,2024-08-16 08:00:00,500,Jadrolinija 
