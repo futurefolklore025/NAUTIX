@@ -1,0 +1,7 @@
+# Copy to backend/.env and adjust as needed
+DATABASE_URL=postgresql+psycopg2://nautix:nautix@db:5432/nautix
+CORS_ORIGINS=*
+JWT_PRIVATE_KEY_PATH=keys/qr_es256_private.pem
+JWT_PUBLIC_KEY_PATH=keys/qr_es256_public.pem
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=

@@ -1,0 +1,31 @@
+{
+	"name": "Nautix Dev",
+	"image": "mcr.microsoft.com/devcontainers/universal:2",
+	"features": {
+		"ghcr.io/devcontainers/features/python:1": {
+			"version": "3.11"
+		},
+		"ghcr.io/devcontainers/features/node:1": {
+			"version": "20"
+		}
+	},
+	"postCreateCommand": "bash .devcontainer/postCreate.sh",
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"python.defaultInterpreterPath": "/usr/local/bin/python3",
+				"editor.formatOnSave": true,
+				"files.exclude": {
+					"**/.git": true,
+					"**/.venv": true,
+					"**/node_modules": true
+				}
+			},
+			"extensions": [
+				"ms-python.python",
+				"esbenp.prettier-vscode",
+				"dbaeumer.vscode-eslint"
+			]
+		}
+	}
+}
