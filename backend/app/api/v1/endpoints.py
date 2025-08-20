@@ -4,7 +4,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal
+from app.db.session import get_db
 from app.models.entities import Booking, Schedule, Ticket
 from app.schemas.api import (
     BookingCreate,
@@ -21,17 +21,9 @@ from app.services.qr import sign_qr_token, verify_qr_token
 router = APIRouter()
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 @router.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    return HealthResponse(status="ok")
+    return HealthResponse(status="ok", timestamp=datetime.utcnow())
 
 
 @router.get("/search", response_model=List[ScheduleOut])

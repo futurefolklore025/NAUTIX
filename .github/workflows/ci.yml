@@ -1,66 +1,54 @@
-name: CI
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
     branches: [ main ]
 
 jobs:
-  backend:
+  test:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install dependencies
-        run: |
-          cd backend
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-      - name: Type check placeholder
-        run: |
-          python -V
-      - name: Run unit tests (placeholder)
-        run: |
-          echo "No tests yet"
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nautix_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
 
-  scanner_pwa:
-    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install and build
-        run: |
-          cd scanner-pwa
-          npm ci || npm install
-          npm run build --if-present
+    - uses: actions/checkout@v4
 
-  operator_portal:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install and build
-        run: |
-          cd operator-portal
-          npm ci || npm install
-          npm run build --if-present
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
 
-  mobile:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install
-        run: |
-          cd mobile
-          npm ci || npm install
+    - name: Install dependencies
+      run: |
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Generate test keys
+      run: |
+        cd backend
+        mkdir -p keys
+        openssl ecparam -genkey -name prime256v1 -noout -out keys/qr_es256_private.pem
+        openssl ec -in keys/qr_es256_private.pem -pubout -out keys/qr_es256_public.pem
+
+    - name: Run tests
+      env:
+        DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/nautix_test
+        SECRET_KEY: test-secret-key-for-ci-only
+      run: |
+        cd backend
+        pytest tests/ -v --cov=app
