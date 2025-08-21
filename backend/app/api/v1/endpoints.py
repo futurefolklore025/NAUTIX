@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models.entities import Booking, Schedule, Ticket
+from app.models.entities import Booking, Schedule, Ticket, Hold
 from app.schemas.api import (
     BookingCreate,
     BookingCreated,
@@ -16,6 +16,8 @@ from app.schemas.api import (
     TicketOut,
 )
 from app.services.qr import sign_qr_token, verify_qr_token
+from app.services.holds import create_hold, consume_hold
+from sqlalchemy import and_
 
 
 router = APIRouter()
@@ -47,17 +49,16 @@ def search(
         )
         .all()
     )
-    return [
-        ScheduleOut(
+    results: List[ScheduleOut] = []
+    for s in schedules:
+        out = ScheduleOut(
             id=str(s.id),
-            origin_port_id=str(s.origin_port_id),
-            dest_port_id=str(s.dest_port_id),
             departure_time=s.departure_time,
             arrival_time=s.arrival_time,
             capacity=s.capacity,
         )
-        for s in schedules
-    ]
+        results.append(out)
+    return results
 
 
 @router.post("/bookings", response_model=BookingCreated, status_code=201)
@@ -65,6 +66,11 @@ def create_booking(payload: BookingCreate, db: Session = Depends(get_db)) -> Boo
     schedule: Schedule | None = db.query(Schedule).get(payload.schedule_id)
     if not schedule:
         raise HTTPException(status_code=404, detail="Schedule not found")
+
+    # Optional: require a hold id to be consumed for atomicity (MVP: auto-create/consume)
+    hold = create_hold(db, schedule_id=str(schedule.id), pax_count=len(payload.passengers or []))
+    if not consume_hold(db, hold.id):
+        raise HTTPException(status_code=409, detail="Unable to secure seats (hold failed)")
 
     booking = Booking(
         schedule_id=str(schedule.id),
@@ -125,10 +131,15 @@ def scan_ticket(payload: ScanRequest, db: Session = Depends(get_db)) -> ScanResp
     if ticket.used:
         return ScanResponse(valid=False, reason="Ticket already used", ticket_id=str(ticket.id), booking_id=str(ticket.booking_id))
 
-    # Mark as used
-    ticket.used = True
-    db.add(ticket)
+    # Atomic mark-as-used via conditional update
+    updated = (
+        db.query(Ticket)
+        .filter(Ticket.id == ticket.id, Ticket.used == False)
+        .update({Ticket.used: True, Ticket.used_at: datetime.utcnow()})
+    )
     db.commit()
+    if updated == 0:
+        return ScanResponse(valid=False, reason="Ticket already used", ticket_id=str(ticket.id), booking_id=str(ticket.booking_id))
 
     return ScanResponse(valid=True, ticket_id=str(ticket.id), booking_id=str(ticket.booking_id))
 

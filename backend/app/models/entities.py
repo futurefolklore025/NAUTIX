@@ -4,7 +4,7 @@ from decimal import Decimal
 from enum import Enum
 
 from sqlalchemy import (
-    Column, DateTime, ForeignKey, Integer, String, Boolean, 
+    Column, DateTime, ForeignKey, Integer, String, Boolean,
     Numeric, Text, CheckConstraint, Index
 )
 from sqlalchemy.orm import relationship, validates
@@ -75,6 +75,9 @@ class Schedule(Base):
     base_price = Column(Numeric(10, 2), nullable=False, default=Decimal('0.00'))
     vehicle_capacity = Column(Integer, nullable=False, default=0)
     is_active = Column(Boolean, default=True, nullable=False)
+    status = Column(String(20), default="on_time", nullable=False)  # on_time, delayed, cancelled
+    status_reason = Column(Text, nullable=True)
+    status_updated_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -114,6 +117,7 @@ class Schedule(Base):
         Index('idx_schedule_route_time', 'origin_port_id', 'dest_port_id', 'departure_time'),
         Index('idx_schedule_departure', 'departure_time'),
         Index('idx_schedule_active', 'is_active'),
+        Index('idx_schedule_status', 'status'),
     )
 
 
@@ -203,3 +207,33 @@ class Ticket(Base):
         Index('idx_ticket_used', 'used'),
         Index('idx_ticket_qr', 'qr_token'),
     )
+
+
+class Hold(Base):
+    __tablename__ = "holds"
+
+    id = _uuid_column()
+    schedule_id = Column(String, ForeignKey("schedules.id", ondelete="CASCADE"), nullable=False)
+    pax_count = Column(Integer, nullable=False, default=1)
+    expires_at = Column(DateTime, nullable=False)
+    consumed = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    schedule = relationship("Schedule")
+
+    __table_args__ = (
+        CheckConstraint('pax_count > 0', name='positive_hold_pax'),
+        Index('idx_hold_schedule', 'schedule_id'),
+        Index('idx_hold_expires', 'expires_at'),
+        Index('idx_hold_consumed', 'consumed'),
+    )
+
+
+class PaymentEvent(Base):
+    __tablename__ = "payment_events"
+
+    id = Column(String, primary_key=True)  # webhook event id
+    type = Column(String, nullable=False)
+    booking_id = Column(String, ForeignKey("bookings.id", ondelete="SET NULL"), nullable=True)
+    processed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
