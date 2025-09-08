@@ -22,7 +22,7 @@ httpx==0.25.2
 python-dotenv==1.0.0
 
 # Payment processing
-stripe==7.8.0
+stripe==12.5.1
 
 # QR code generation
 qrcode[pil]==7.4.2
